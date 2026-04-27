@@ -7,6 +7,7 @@ import type { Clima } from '@/domain/entities';
 import { cacheWeatherData, getCachedWeather } from '@/lib/offline/weather-cache';
 import { ChatWidget } from './components/ChatWidget/ChatWidget';
 import { PredictionWidget } from './components/PredictionWidget/PredictionWidget';
+import { MapWidget } from './components/MapWidget/MapWidget';
 
 export default function Home() {
   const isOnline = useOnlineStatus();
@@ -14,15 +15,15 @@ export default function Home() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isOfflineData, setIsOfflineData] = useState(false);
+  const [coordinates, setCoordinates] = useState({ lat: -11.775, lon: -75.497 });
 
   useEffect(() => {
     async function fetchWeather() {
       setLoading(true);
       setError(null);
 
-      // Default: Jauja, Perú
-      const lat = -11.775;
-      const lon = -75.497;
+      const lat = coordinates.lat;
+      const lon = coordinates.lon;
       const cacheKey = `${lat},${lon}`;
 
       try {
@@ -63,7 +64,7 @@ export default function Home() {
     }
 
     fetchWeather();
-  }, [isOnline]);
+  }, [isOnline, coordinates]);
 
   function exportCSV() {
     if (!clima) return;
@@ -142,6 +143,11 @@ export default function Home() {
               </div>
             ))}
           </div>
+          
+          {/* MapWidget */}
+          <div className="mb-8">
+            <MapWidget lat={coordinates.lat} lon={coordinates.lon} setCoordinates={(lat, lon) => setCoordinates({ lat, lon })} />
+          </div>
 
           {/* Actions */}
           <div className="flex gap-3 flex-wrap">
@@ -168,7 +174,7 @@ export default function Home() {
           {/* AI Modules */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-8 items-start">
             <ChatWidget weatherContext={clima} />
-            <PredictionWidget lat={-11.775} lon={-75.497} />
+            <PredictionWidget lat={coordinates.lat} lon={coordinates.lon} />
           </div>
         </>
       )}
