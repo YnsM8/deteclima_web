@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from 'next';
 import './globals.css';
 import OfflineBanner from '@/app/components/OfflineBanner';
+import { AuthProvider } from '@/lib/contexts/AuthContext';
 
 export const metadata: Metadata = {
   title: 'Deteclima — Monitor Climático Inteligente',
@@ -28,8 +29,10 @@ export default function RootLayout({
   return (
     <html lang="es">
       <body className="antialiased bg-[#0a0f1e] text-white min-h-screen">
-        <OfflineBanner />
-        {children}
+        <AuthProvider>
+          <OfflineBanner />
+          {children}
+        </AuthProvider>
       </body>
     </html>
   );

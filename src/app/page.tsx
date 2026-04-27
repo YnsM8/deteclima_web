@@ -7,6 +7,9 @@ import type { Clima } from '@/domain/entities';
 import { cacheWeatherData, getCachedWeather } from '@/lib/offline/weather-cache';
 import { ChatWidget } from './components/ChatWidget/ChatWidget';
 import { PredictionWidget } from './components/PredictionWidget/PredictionWidget';
+import { AuthWidget } from './components/AuthWidget';
+import { AlertBanner } from './components/AlertBanner';
+import type { Prediccion } from '@/domain/entities';
 
 export default function Home() {
   const isOnline = useOnlineStatus();
@@ -14,6 +17,7 @@ export default function Home() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isOfflineData, setIsOfflineData] = useState(false);
+  const [alertMessage, setAlertMessage] = useState<string | null>(null);
 
   useEffect(() => {
     async function fetchWeather() {
@@ -86,20 +90,32 @@ export default function Home() {
     URL.revokeObjectURL(url);
   }
 
+  const handlePredictionLoad = (pred: Prediccion) => {
+    // Buscar si alguna temperatura de las próximas 24h cae a <= 5°C (Helada/Friaje severo)
+    const coldHours = pred.predictions.filter(p => p.temperature <= 5);
+    if (coldHours.length > 0) {
+      setAlertMessage(`¡Atención! Se pronostica un evento de helada/friaje con temperaturas de hasta ${Math.min(...coldHours.map(c => c.temperature))}°C en las próximas horas.`);
+    }
+  };
+
   return (
-    <main className="min-h-screen p-6 max-w-6xl mx-auto">
+    <main className="min-h-screen p-6 max-w-6xl mx-auto relative">
+      <AlertBanner message={alertMessage} onClose={() => setAlertMessage(null)} />
       {/* Header */}
-      <header className="flex items-center justify-between mb-8">
+      <header className="flex flex-col md:flex-row items-start md:items-center justify-between mb-8 gap-4">
         <div className="flex items-center gap-3">
           <CloudSun size={36} className="text-[var(--color-accent)]" />
           <h1 className="text-2xl font-bold tracking-tight">Deteclima</h1>
         </div>
-        <div className="flex items-center gap-2 text-sm text-[var(--color-text-secondary)]">
-          {isOnline ? (
-            <><Wifi size={16} className="text-[var(--color-success)]" /> En línea</>
-          ) : (
-            <><WifiOff size={16} className="text-[var(--color-warning)]" /> Offline</>
-          )}
+        <div className="flex items-center gap-6">
+          <AuthWidget />
+          <div className="flex items-center gap-2 text-sm text-[var(--color-text-secondary)]">
+            {isOnline ? (
+              <><Wifi size={16} className="text-[var(--color-success)]" /> En línea</>
+            ) : (
+              <><WifiOff size={16} className="text-[var(--color-warning)]" /> Offline</>
+            )}
+          </div>
         </div>
       </header>
 
@@ -168,7 +184,7 @@ export default function Home() {
           {/* AI Modules */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-8 items-start">
             <ChatWidget weatherContext={clima} />
-            <PredictionWidget lat={-11.775} lon={-75.497} />
+            <PredictionWidget lat={-11.775} lon={-75.497} onPredictionLoad={handlePredictionLoad} />
           </div>
         </>
       )}
