@@ -1,65 +1,182 @@
-import Image from "next/image";
+'use client';
+
+import { useState, useEffect } from 'react';
+import { useOnlineStatus } from '@/lib/hooks/useOnlineStatus';
+import { CloudSun, MessageCircle, BarChart3, Download, Wifi, WifiOff } from 'lucide-react';
+import type { Clima } from '@/domain/entities';
+import { cacheWeatherData, getCachedWeather } from '@/lib/offline/weather-cache';
+import { ChatWidget } from './components/ChatWidget/ChatWidget';
+import { PredictionWidget } from './components/PredictionWidget/PredictionWidget';
 
 export default function Home() {
+  const isOnline = useOnlineStatus();
+  const [clima, setClima] = useState<Clima | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [isOfflineData, setIsOfflineData] = useState(false);
+
+  useEffect(() => {
+    async function fetchWeather() {
+      setLoading(true);
+      setError(null);
+
+      // Default: Jauja, Perú
+      const lat = -11.775;
+      const lon = -75.497;
+      const cacheKey = `${lat},${lon}`;
+
+      try {
+        if (isOnline) {
+          const res = await fetch(`/api/weather?lat=${lat}&lon=${lon}`);
+          if (!res.ok) throw new Error('Error al obtener datos');
+          const data = await res.json();
+          setClima(data);
+          setIsOfflineData(false);
+          // Cache for offline use
+          await cacheWeatherData(cacheKey, data);
+        } else {
+          // Try loading from cache
+          const cached = (await getCachedWeather(cacheKey)) as Clima | null;
+          if (cached) {
+            setClima(cached);
+            setIsOfflineData(true);
+          } else {
+            setError('Sin conexión y sin datos cacheados');
+          }
+        }
+      } catch {
+        // Try cache as fallback
+        try {
+          const cached = (await getCachedWeather(cacheKey)) as Clima | null;
+          if (cached) {
+            setClima(cached);
+            setIsOfflineData(true);
+          } else {
+            setError('Error de conexión. Sin datos disponibles.');
+          }
+        } catch {
+          setError('Error al acceder a los datos.');
+        }
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    fetchWeather();
+  }, [isOnline]);
+
+  function exportCSV() {
+    if (!clima) return;
+
+    const header = isOfflineData
+      ? `[DATOS OFFLINE - última actualización: ${clima.updatedAt}]\n`
+      : '';
+
+    const rows = clima.hourly.time.map((t, i) =>
+      [t, clima.hourly.temperature[i], clima.hourly.humidity[i], clima.hourly.windSpeed[i], clima.hourly.precipitation[i]].join(',')
+    );
+
+    const csv = `${header}Hora,Temperatura (°C),Humedad (%),Viento (km/h),Precipitación (mm)\n${rows.join('\n')}`;
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `deteclima_${new Date().toISOString().split('T')[0]}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
+    <main className="min-h-screen p-6 max-w-6xl mx-auto">
+      {/* Header */}
+      <header className="flex items-center justify-between mb-8">
+        <div className="flex items-center gap-3">
+          <CloudSun size={36} className="text-[var(--color-accent)]" />
+          <h1 className="text-2xl font-bold tracking-tight">Deteclima</h1>
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
+        <div className="flex items-center gap-2 text-sm text-[var(--color-text-secondary)]">
+          {isOnline ? (
+            <><Wifi size={16} className="text-[var(--color-success)]" /> En línea</>
+          ) : (
+            <><WifiOff size={16} className="text-[var(--color-warning)]" /> Offline</>
+          )}
         </div>
-      </main>
-    </div>
+      </header>
+
+      {/* Status badge */}
+      {isOfflineData && (
+        <div className="glass rounded-lg px-4 py-2 mb-6 text-sm text-[var(--color-warning)] flex items-center gap-2">
+          <WifiOff size={14} />
+          Mostrando datos cacheados — última actualización: {clima?.updatedAt ? new Date(clima.updatedAt).toLocaleString('es-PE') : '—'}
+        </div>
+      )}
+
+      {/* Loading / Error */}
+      {loading && (
+        <div className="flex items-center justify-center py-20">
+          <div className="animate-spin rounded-full h-8 w-8 border-2 border-[var(--color-accent)] border-t-transparent" />
+        </div>
+      )}
+      {error && (
+        <div className="glass rounded-lg px-4 py-3 mb-6 text-sm text-[var(--color-danger)]">
+          {error}
+        </div>
+      )}
+
+      {/* Weather Cards */}
+      {clima && !loading && (
+        <>
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-8">
+            {[
+              { label: 'Temperatura', value: `${clima.current.temperature}°C`, icon: '🌡️' },
+              { label: 'Humedad', value: `${clima.current.humidity}%`, icon: '💧' },
+              { label: 'Viento', value: `${clima.current.windSpeed} km/h`, icon: '💨' },
+              { label: 'Presión', value: `${clima.current.pressure} hPa`, icon: '🔵' },
+              { label: 'Precipitación', value: `${clima.current.precipitation} mm`, icon: '🌧️' },
+              { label: 'Radiación', value: `${clima.current.radiation} W/m²`, icon: '☀️' },
+            ].map((card) => (
+              <div key={card.label} className="glass rounded-xl p-4 hover:border-[var(--color-accent)]/30 transition-colors">
+                <div className="text-2xl mb-2">{card.icon}</div>
+                <p className="text-xs text-[var(--color-text-secondary)] mb-1">{card.label}</p>
+                <p className="text-lg font-semibold">{card.value}</p>
+              </div>
+            ))}
+          </div>
+
+          {/* Actions */}
+          <div className="flex gap-3 flex-wrap">
+            <button
+              onClick={exportCSV}
+              className="glass rounded-lg px-4 py-2.5 text-sm font-medium flex items-center gap-2 hover:bg-white/5 transition-colors cursor-pointer"
+            >
+              <Download size={16} /> Exportar CSV
+            </button>
+            <a
+              href="#chat"
+              className="glass rounded-lg px-4 py-2.5 text-sm font-medium flex items-center gap-2 hover:bg-white/5 transition-colors"
+            >
+              <MessageCircle size={16} /> Chatbot IA
+            </a>
+            <a
+              href="#prediction"
+              className="glass rounded-lg px-4 py-2.5 text-sm font-medium flex items-center gap-2 hover:bg-white/5 transition-colors"
+            >
+              <BarChart3 size={16} /> Predicción 24h
+            </a>
+          </div>
+          
+          {/* AI Modules */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-8 items-start">
+            <ChatWidget weatherContext={clima} />
+            <PredictionWidget lat={-11.775} lon={-75.497} />
+          </div>
+        </>
+      )}
+
+      {/* Footer */}
+      <footer className="mt-16 pt-8 border-t border-[var(--color-border)] text-center text-xs text-[var(--color-text-secondary)]">
+        Deteclima — Colegio San Vicente de Paúl, Jauja | {new Date().getFullYear()}
+      </footer>
+    </main>
   );
 }
