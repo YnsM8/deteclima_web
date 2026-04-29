@@ -11,13 +11,14 @@
   --color-danger: #f87171;
   --color-text-primary: #f1f5f9;
   --color-text-secondary: #94a3b8;
-  --color-border: #1e293b;
+  --color-border: rgba(255, 255, 255, 0.08);
 }
 
 body {
-  font-family: system-ui, -apple-system, sans-serif;
-  background: var(--color-bg-primary);
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  background: radial-gradient(circle at top left, #0f172a, #0a0f1e, #020617);
   color: var(--color-text-primary);
+  min-height: 100vh;
 }
 
 /* Scrollbar styling */
@@ -25,16 +26,59 @@ body {
   width: 6px;
 }
 ::-webkit-scrollbar-track {
-  background: var(--color-bg-primary);
+  background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: var(--color-border);
-  border-radius: 3px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.2);
 }
 
 /* Glassmorphism utility */
 .glass {
-  background: rgba(17, 24, 39, 0.6);
-  backdrop-filter: blur(12px);
-  border: 1px solid rgba(56, 189, 248, 0.1);
+  background: rgba(255, 255, 255, 0.03);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.5);
+  transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.glass:hover {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(56, 189, 248, 0.3);
+  transform: translateY(-2px);
+}
+
+/* Animations */
+@keyframes fade-in {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.animate-fade-in {
+  animation: fade-in 0.6s ease-out forwards;
+}
+
+.leaflet-container {
+  border-radius: 12px;
+  background: #f1f5f9 !important;
+}
+
+.leaflet-popup-content-wrapper {
+  background: #111827 !important;
+  color: white !important;
+  border: 1px solid rgba(56, 189, 248, 0.2) !important;
+  border-radius: 12px !important;
+}
+
+.leaflet-popup-tip {
+  background: #111827 !important;
+}
+
+.custom-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.1) transparent;
 }

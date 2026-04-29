@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useOnlineStatus } from '@/lib/hooks/useOnlineStatus';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
-import { BarChart3, AlertCircle, WifiOff } from 'lucide-react';
+import { BarChart3, AlertCircle } from 'lucide-react';
 import type { Prediccion } from '@/domain/entities';
 import { cachePredictionData, getCachedPrediction } from '@/lib/offline/prediction-cache';
 
@@ -18,9 +18,9 @@ export function PredictionWidget({ lat, lon, onPredictionLoad }: Props) {
   const [data, setData] = useState<Prediccion | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [isOfflineData, setIsOfflineData] = useState(false);
 
   useEffect(() => {
+    let ignore = false;
     async function fetchPrediction() {
       setLoading(true);
       setError(null);
@@ -35,31 +35,70 @@ export function PredictionWidget({ lat, lon, onPredictionLoad }: Props) {
         });
         if (!res.ok) throw new Error('No se pudo generar la predicción automática');
         const json = await res.json();
-        setData(json);
-        setIsOfflineData(false);
-        if (onPredictionLoad) onPredictionLoad(json);
+        if (!ignore) {
+          setData(json);
+          if (onPredictionLoad) onPredictionLoad(json);
+        }
         await cachePredictionData(cacheKey, json);
       } catch (err) {
         // Fallback to cache
         try {
           const cached = (await getCachedPrediction(cacheKey)) as Prediccion | null;
-          if (cached) {
+          if (cached && !ignore) {
             setData(cached);
-            setIsOfflineData(true);
             if (onPredictionLoad) onPredictionLoad(cached);
-          } else {
+          } else if (!ignore) {
             setError(err instanceof Error && err.message !== 'Offline' ? err.message : 'Modo offline y sin predicciones previas guardadas.');
           }
         } catch {
-          setError('Error de lectura local.');
+          if (!ignore) setError('Error de lectura local.');
         }
       } finally {
-        setLoading(false);
+        if (!ignore) setLoading(false);
       }
     }
 
     fetchPrediction();
-  }, [lat, lon, isOnline]);
+    return () => { ignore = true; };
+  }, [lat, lon, isOnline, onPredictionLoad]);
+
+  const [anomaly, setAnomaly] = useState<{ score: number, type: string } | null>(null);
+
+  useEffect(() => {
+    let ignore = false;
+    async function fetchAnomaly() {
+      try {
+        // Fetch last 7 days history to calculate a simple baseline
+        const end = new Date().toISOString().split('T')[0];
+        const start = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+        
+        const res = await fetch(`https://archive-api.open-meteo.com/v1/archive?latitude=${lat}&longitude=${lon}&start_date=${start}&end_date=${end}&hourly=temperature_2m`);
+        if (!res.ok) return;
+        
+        const history = await res.json();
+        const temps = history.hourly.temperature_2m;
+        const avg = temps.reduce((a: number, b: number) => a + b, 0) / temps.length;
+        
+        if (data && data.predictions.length > 0 && !ignore) {
+          const currentTemp = data.predictions[0].temperature;
+          const diff = currentTemp - avg;
+          
+          if (Math.abs(diff) > 5) {
+            setAnomaly({ 
+              score: Math.abs(diff), 
+              type: diff > 0 ? 'Calor Inusual' : 'Frío Inusual (Posible Helada)' 
+            });
+          } else {
+            setAnomaly({ score: Math.abs(diff), type: 'Normal' });
+          }
+        }
+      } catch (e) {
+        console.error('Error fetching anomaly data:', e);
+      }
+    }
+    if (data) fetchAnomaly();
+    return () => { ignore = true; };
+  }, [lat, lon, data]);
 
   // Format data for Recharts (extract hour properly)
   const chartData = data?.predictions.map((p) => {
@@ -73,7 +112,14 @@ export function PredictionWidget({ lat, lon, onPredictionLoad }: Props) {
   }) || [];
 
   return (
-    <div id="prediction" className="glass rounded-xl p-6 mt-8 scroll-mt-24 w-full">
+    <div id="prediction" className="glass rounded-xl p-6 mt-8 scroll-mt-24 w-full relative overflow-hidden">
+      {/* Anomaly Badge */}
+      {anomaly && anomaly.type !== 'Normal' && (
+        <div className="absolute top-0 right-0 bg-rose-500 text-white text-[10px] font-bold px-3 py-1 rounded-bl-lg animate-pulse z-10">
+          ⚠️ {anomaly.type.toUpperCase()}
+        </div>
+      )}
+
       <div className="flex items-center gap-3 mb-6">
         <div className="p-2 bg-[var(--color-accent)]/20 text-[var(--color-accent)] rounded-lg">
           <BarChart3 size={24} />
@@ -124,26 +170,32 @@ export function PredictionWidget({ lat, lon, onPredictionLoad }: Props) {
             </ResponsiveContainer>
           </div>
           
-          {data?.metrics && (
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mt-6 border-t border-[var(--color-border)] pt-4">
-              <div className="p-3 bg-white/5 rounded-lg border border-[var(--color-border)]">
-                <p className="text-xs text-[var(--color-text-secondary)] mb-1">Confianza (R²)</p>
-                <p className="font-semibold">{(data.metrics.r2 * 100).toFixed(1)}%</p>
-              </div>
-              <div className="p-3 bg-white/5 rounded-lg border border-[var(--color-border)]">
-                <p className="text-xs text-[var(--color-text-secondary)] mb-1">Margen Error Absoluto (MAE)</p>
-                <p className="font-semibold text-rose-300">± {data.metrics.mae.toFixed(2)} °C</p>
-              </div>
-              <div className="p-3 bg-white/5 rounded-lg border border-[var(--color-border)]">
-                <p className="text-xs text-[var(--color-text-secondary)] mb-1">RMSE</p>
-                <p className="font-semibold text-rose-300">{data.metrics.rmse.toFixed(2)}</p>
-              </div>
-              <div className="p-3 bg-white/5 rounded-lg border border-[var(--color-border)]">
-                <p className="text-xs text-[var(--color-text-secondary)] mb-1">Modelo v.</p>
-                <p className="font-semibold opacity-70">Random Forest {data.modelVersion}</p>
-              </div>
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mt-6 border-t border-[var(--color-border)] pt-4">
+            {data?.metrics && (
+              <>
+                <div className="p-3 bg-white/5 rounded-lg border border-[var(--color-border)]">
+                  <p className="text-xs text-[var(--color-text-secondary)] mb-1">Confianza (R²)</p>
+                  <p className="font-semibold">{(data.metrics.r2 * 100).toFixed(1)}%</p>
+                </div>
+                <div className="p-3 bg-white/5 rounded-lg border border-[var(--color-border)]">
+                  <p className="text-xs text-[var(--color-text-secondary)] mb-1">Margen de Error (MAE)</p>
+                  <p className="font-semibold text-rose-300">± {data.metrics.mae.toFixed(2)} °C</p>
+                </div>
+              </>
+            )}
+            
+            <div className="p-3 bg-white/5 rounded-lg border border-[var(--color-border)]">
+              <p className="text-xs text-[var(--color-text-secondary)] mb-1">Anomalía Térmica</p>
+              <p className={`font-semibold ${anomaly && anomaly.type !== 'Normal' ? 'text-rose-400' : 'text-green-400'}`}>
+                {anomaly ? (anomaly.type !== 'Normal' ? `+${anomaly.score.toFixed(1)}°C` : 'Normal') : '--'}
+              </p>
             </div>
-          )}
+            
+            <div className="p-3 bg-white/5 rounded-lg border border-[var(--color-border)]">
+              <p className="text-xs text-[var(--color-text-secondary)] mb-1">Modelo v.</p>
+              <p className="font-semibold opacity-70">Random Forest {data?.modelVersion || '1.0'}</p>
+            </div>
+          </div>
         </>
       )}
     </div>

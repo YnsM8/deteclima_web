@@ -20,6 +20,7 @@ import { PredictionWidget } from "./components/PredictionWidget/PredictionWidget
 import { MapWidget } from "./components/MapWidget/MapWidget";
 import { AuthWidget } from "./components/AuthWidget";
 import { AlertBanner } from "./components/AlertBanner";
+import { useRegionalAlerts } from "@/lib/hooks/useRegionalAlerts";
 import type { Prediccion } from "@/domain/entities";
 
 export default function Home() {
@@ -35,6 +36,9 @@ export default function Home() {
   const [alertMessage, setAlertMessage] = useState<string | null>(null);
 
   useEffect(() => {
+    console.log('Fetching weather for:', coordinates.lat, coordinates.lon);
+    let ignore = false;
+
     async function fetchWeather() {
       setLoading(true);
       setError(null);
@@ -48,39 +52,46 @@ export default function Home() {
           const res = await fetch(`/api/weather?lat=${lat}&lon=${lon}`);
           if (!res.ok) throw new Error("Error al obtener datos");
           const data = await res.json();
-          setClima(data);
-          setIsOfflineData(false);
+          if (!ignore) {
+            setClima(data);
+            setIsOfflineData(false);
+          }
           // Cache for offline use
           await cacheWeatherData(cacheKey, data);
         } else {
           // Try loading from cache
           const cached = (await getCachedWeather(cacheKey)) as Clima | null;
-          if (cached) {
+          if (cached && !ignore) {
             setClima(cached);
             setIsOfflineData(true);
-          } else {
+          } else if (!ignore) {
             setError("Sin conexión y sin datos cacheados");
           }
         }
       } catch {
         // Try cache as fallback
-        try {
-          const cached = (await getCachedWeather(cacheKey)) as Clima | null;
-          if (cached) {
-            setClima(cached);
-            setIsOfflineData(true);
-          } else {
-            setError("Error de conexión. Sin datos disponibles.");
+        if (!ignore) {
+          try {
+            const cached = (await getCachedWeather(cacheKey)) as Clima | null;
+            if (cached) {
+              setClima(cached);
+              setIsOfflineData(true);
+            } else {
+              setError("Error de conexión. Sin datos disponibles.");
+            }
+          } catch {
+            setError("Error al acceder a los datos.");
           }
-        } catch {
-          setError("Error al acceder a los datos.");
         }
       } finally {
-        setLoading(false);
+        if (!ignore) setLoading(false);
       }
     }
 
     fetchWeather();
+    return () => {
+      ignore = true;
+    };
   }, [isOnline, coordinates]);
 
   const handlePredictionLoad = useCallback((pred: Prediccion) => {
@@ -120,11 +131,16 @@ export default function Home() {
     URL.revokeObjectURL(url);
   }, [clima, isOfflineData]);
 
+  const { alert: regionalAlert, clearAlert: clearRegionalAlert } = useRegionalAlerts();
+
   return (
     <main className="min-h-screen p-6 max-w-6xl mx-auto relative">
       <AlertBanner
-        message={alertMessage}
-        onClose={() => setAlertMessage(null)}
+        message={alertMessage || regionalAlert}
+        onClose={() => {
+          setAlertMessage(null);
+          clearRegionalAlert();
+        }}
       />
       {/* Header */}
       <header className="flex flex-col md:flex-row items-start md:items-center justify-between mb-8 gap-4">
@@ -195,65 +211,72 @@ export default function Home() {
                   label: "Temperatura",
                   value: `${clima.current.temperature}°C`,
                   icon: "🌡️",
+                  color: "from-orange-500/20 to-rose-500/20",
                 },
                 {
                   label: "Humedad",
                   value: `${clima.current.humidity}%`,
                   icon: "💧",
+                  color: "from-blue-500/20 to-cyan-500/20",
                 },
                 {
                   label: "Viento",
                   value: `${clima.current.windSpeed} km/h`,
                   icon: "💨",
+                  color: "from-slate-500/20 to-blue-500/20",
                 },
                 {
                   label: "Presión",
                   value: `${clima.current.pressure} hPa`,
-                  icon: "🔵",
+                  icon: "⏲️",
+                  color: "from-indigo-500/20 to-purple-500/20",
                 },
                 {
                   label: "Precipitación",
                   value: `${clima.current.precipitation} mm`,
                   icon: "🌧️",
+                  color: "from-cyan-500/20 to-blue-500/20",
                 },
                 {
                   label: "Radiación",
                   value: `${clima.current.radiation} W/m²`,
                   icon: "☀️",
+                  color: "from-yellow-500/20 to-orange-500/20",
                 },
-              ].map((card) => (
+              ].map((card, i) => (
                 <div
                   key={card.label}
-                  className="glass rounded-xl p-4 hover:border-[var(--color-accent)]/30 transition-colors"
+                  className={`glass rounded-2xl p-5 border-l-4 border-l-[var(--color-accent)] animate-fade-in bg-gradient-to-br ${card.color}`}
+                  style={{ animationDelay: `${i * 100}ms` }}
                 >
-                  <div className="text-2xl mb-2">{card.icon}</div>
-                  <p className="text-xs text-[var(--color-text-secondary)] mb-1">
+                  <div className="text-3xl mb-3 drop-shadow-md">{card.icon}</div>
+                  <p className="text-[10px] uppercase tracking-wider text-[var(--color-text-secondary)] font-bold mb-1">
                     {card.label}
                   </p>
-                  <p className="text-lg font-semibold">{card.value}</p>
+                  <p className="text-xl font-bold tracking-tight">{card.value}</p>
                 </div>
               ))}
             </div>
 
             {/* Actions */}
-            <div className="flex gap-3 flex-wrap">
+            <div className="flex gap-3 flex-wrap animate-fade-in" style={{ animationDelay: '600ms' }}>
               <button
                 onClick={exportCSV}
-                className="glass rounded-lg px-4 py-2.5 text-sm font-medium flex items-center gap-2 hover:bg-white/5 transition-colors cursor-pointer"
+                className="glass rounded-xl px-5 py-3 text-sm font-bold flex items-center gap-2 hover:bg-[var(--color-accent)] hover:text-white transition-all cursor-pointer group"
               >
-                <Download size={16} /> Exportar CSV
+                <Download size={18} className="group-hover:bounce" /> Exportar Reporte CSV
               </button>
               <a
                 href="#chat"
-                className="glass rounded-lg px-4 py-2.5 text-sm font-medium flex items-center gap-2 hover:bg-white/5 transition-colors"
+                className="glass rounded-xl px-5 py-3 text-sm font-bold flex items-center gap-2 hover:bg-white/10 transition-all"
               >
-                <MessageCircle size={16} /> Chatbot IA
+                <MessageCircle size={18} /> Consultar a la IA
               </a>
               <a
                 href="#prediction"
-                className="glass rounded-lg px-4 py-2.5 text-sm font-medium flex items-center gap-2 hover:bg-white/5 transition-colors"
+                className="glass rounded-xl px-5 py-3 text-sm font-bold flex items-center gap-2 hover:bg-white/10 transition-all"
               >
-                <BarChart3 size={16} /> Predicción 24h
+                <BarChart3 size={18} /> Ver Análisis ML
               </a>
             </div>
 

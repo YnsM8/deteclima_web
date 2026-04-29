@@ -1,7 +1,7 @@
 'use client';
 
 import { AlertTriangle, X } from 'lucide-react';
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useAuth } from '@/lib/contexts/AuthContext';
 
 interface Props {
@@ -11,18 +11,12 @@ interface Props {
 
 export function AlertBanner({ message, onClose }: Props) {
   const { user } = useAuth();
-  const [visible, setVisible] = useState(false);
+  const [dismissedMessage, setDismissedMessage] = useState<string | null>(null);
 
-  useEffect(() => {
-    // Solo mostramos alerta a usuarios autenticados
-    if (message && user) {
-      setVisible(true);
-    } else {
-      setVisible(false);
-    }
-  }, [message, user]);
+  // Consider it visible if there's a message, a user, and this specific message hasn't been dismissed
+  const isVisible = !!(message && user && dismissedMessage !== message);
 
-  if (!visible || !message) return null;
+  if (!isVisible || !message) return null;
 
   return (
     <div className="fixed top-4 right-4 z-50 animate-in fade-in slide-in-from-top-4">
@@ -37,7 +31,7 @@ export function AlertBanner({ message, onClose }: Props) {
           </p>
         </div>
         <button 
-          onClick={() => { setVisible(false); onClose(); }} 
+          onClick={() => { setDismissedMessage(message); onClose(); }} 
           className="text-white/50 hover:text-white transition-colors h-fit"
         >
           <X size={20} />
