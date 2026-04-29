@@ -10,9 +10,10 @@ import { cachePredictionData, getCachedPrediction } from '@/lib/offline/predicti
 interface Props {
   lat: number;
   lon: number;
+  onPredictionLoad?: (pred: Prediccion) => void;
 }
 
-export function PredictionWidget({ lat, lon }: Props) {
+export function PredictionWidget({ lat, lon, onPredictionLoad }: Props) {
   const isOnline = useOnlineStatus();
   const [data, setData] = useState<Prediccion | null>(null);
   const [loading, setLoading] = useState(false);
@@ -36,6 +37,7 @@ export function PredictionWidget({ lat, lon }: Props) {
         const json = await res.json();
         setData(json);
         setIsOfflineData(false);
+        if (onPredictionLoad) onPredictionLoad(json);
         await cachePredictionData(cacheKey, json);
       } catch (err) {
         // Fallback to cache
@@ -44,6 +46,7 @@ export function PredictionWidget({ lat, lon }: Props) {
           if (cached) {
             setData(cached);
             setIsOfflineData(true);
+            if (onPredictionLoad) onPredictionLoad(cached);
           } else {
             setError(err instanceof Error && err.message !== 'Offline' ? err.message : 'Modo offline y sin predicciones previas guardadas.');
           }

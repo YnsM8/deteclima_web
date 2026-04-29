@@ -289,3 +289,13 @@ Backend (BaaS)      →  Supabase (gratis)
 Deploy ML           →  Render (gratis)
 Costo total         →  S/ 0.00 (+ costo dominio Name.com)
 ```
+
+---
+
+## Roadmap (Fase 2)
+
+Las siguientes funcionalidades expanden el proyecto manteniendo la misma filosofía y tecnología (Next.js + Supabase + Python + Groq):
+
+1. **Alertas Tempranas Personalizadas (Auth + Database)**: Implementación de inicio de sesión (`Supabase Auth`) para que los usuarios guarden ubicaciones. Un sistema de notificaciones en el dashboard mostrará "Alertas Rojas" cruzando estos datos con predicciones ML (ej. para advertir sobre Heladas/Friajes).
+2. **Mapa Interactivo Regional (Frontend)**: Integración de un mapa interactivo geolocalizado con pines (usando leaflet o nativo) para clickear y predecir el clima en múltiples puntos del valle sin salir del inicio.
+3. **Detección de Anomalías Climáticas (Python ML)**: Extensión del microservicio Python con modelos tipo *Isolation Forest* para reportar si la condición climática actual entra en parámetros de "anomalía histórica" comparado con el set de 30 años.
