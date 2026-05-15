@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { getCachedWeather, isWeatherCacheStale } from '@/lib/offline/weather-cache';
+import { getCachedWeather, isWeatherCacheStale } from '@/infrastructure/adapters/out/cache/weather-cache';
 import type { Clima } from '@/domain/entities';
 
 interface OfflineDataState {

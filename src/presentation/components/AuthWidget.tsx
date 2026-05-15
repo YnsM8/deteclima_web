@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
-import { useAuth } from '@/lib/contexts/AuthContext';
-import { supabase } from '@/lib/supabase/client';
+import { useAuth } from '@/presentation/contexts/AuthContext';
+import { supabase } from '@/infrastructure/adapters/out/persistence/supabase/client';
+
 import { UserCircle, LogOut, X, Loader2, AlertCircle, MapPin, Trash2 } from 'lucide-react';
 
 export function AuthWidget() {

@@ -1,6 +1,6 @@
 'use client';
 
-import { useOnlineStatus } from '@/lib/hooks/useOnlineStatus';
+import { useOnlineStatus } from '@/presentation/hooks/useOnlineStatus';
 import { WifiOff } from 'lucide-react';
 
 export default function OfflineBanner() {

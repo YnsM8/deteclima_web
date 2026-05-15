@@ -3,8 +3,9 @@
 import dynamic from 'next/dynamic';
 import { useState } from 'react';
 import { MapPin, Globe, Star, Loader2, Check } from 'lucide-react';
-import { useAuth } from '@/lib/contexts/AuthContext';
-import { supabase } from '@/lib/supabase/client';
+import { useAuth } from '@/presentation/contexts/AuthContext';
+import { supabase } from '@/infrastructure/adapters/out/persistence/supabase/client';
+
 
 // Dynamic import with SSR Disabled (vital for Leaflet to not crash on Next.js server)
 const MapClient = dynamic(() => import('./MapClient'), {

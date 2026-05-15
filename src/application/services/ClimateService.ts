@@ -1,7 +1,7 @@
-import { Clima } from '@/domain/entities';
-import { validateCoordinates } from '@/domain/validators/ClimaValidator';
-import { ConsultarClimaUseCase } from '@/application/ports/input/ConsultarClimaUseCase';
-import { WeatherPort } from '@/application/ports/output/WeatherPort';
+import { Clima } from "@/domain/entities";
+import { validateCoordinates } from "@/domain/validators/ClimaValidator";
+import { ConsultarClimaUseCase } from "@/application/ports/input/ConsultarClimaUseCase";
+import { WeatherPort } from "@/application/ports/output/WeatherPort";
 
 export class ClimateService implements ConsultarClimaUseCase {
   constructor(private readonly weatherPort: WeatherPort) {}

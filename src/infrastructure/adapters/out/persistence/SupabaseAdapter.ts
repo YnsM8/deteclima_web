@@ -1,5 +1,5 @@
 import { DatabasePort } from '@/application/ports/output/DatabasePort';
-import { supabaseAdmin } from '@/lib/supabase/server';
+import { supabaseAdmin } from '@/infrastructure/adapters/out/persistence/supabase/server';
 
 export class SupabaseAdapter implements DatabasePort {
   async saveWeatherQuery(data: {

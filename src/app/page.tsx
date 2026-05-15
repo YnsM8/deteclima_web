@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { useOnlineStatus } from "@/lib/hooks/useOnlineStatus";
+import { useOnlineStatus } from "@/presentation/hooks/useOnlineStatus";
 import {
   CloudSun,
   MessageCircle,
@@ -14,14 +14,15 @@ import type { Clima } from "@/domain/entities";
 import {
   cacheWeatherData,
   getCachedWeather,
-} from "@/lib/offline/weather-cache";
-import { ChatWidget } from "./components/ChatWidget/ChatWidget";
-import { PredictionWidget } from "./components/PredictionWidget/PredictionWidget";
-import { MapWidget } from "./components/MapWidget/MapWidget";
-import { AuthWidget } from "./components/AuthWidget";
-import { AlertBanner } from "./components/AlertBanner";
-import { useRegionalAlerts } from "@/lib/hooks/useRegionalAlerts";
+} from "@/infrastructure/adapters/out/cache/weather-cache";
+import { ChatWidget } from "@/presentation/components/ChatWidget/ChatWidget";
+import { PredictionWidget } from "@/presentation/components/PredictionWidget/PredictionWidget";
+import { MapWidget } from "@/presentation/components/MapWidget/MapWidget";
+import { AuthWidget } from "@/presentation/components/AuthWidget";
+import { AlertBanner } from "@/presentation/components/AlertBanner";
+import { useRegionalAlerts } from "@/presentation/hooks/useRegionalAlerts";
 import type { Prediccion } from "@/domain/entities";
+
 
 export default function Home() {
   const isOnline = useOnlineStatus();

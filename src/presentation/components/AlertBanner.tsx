@@ -2,7 +2,7 @@
 
 import { AlertTriangle, X } from 'lucide-react';
 import { useState } from 'react';
-import { useAuth } from '@/lib/contexts/AuthContext';
+import { useAuth } from '@/presentation/contexts/AuthContext';
 
 interface Props {
   message: string | null;

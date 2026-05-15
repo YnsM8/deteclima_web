@@ -1,8 +1,8 @@
 import type { Metadata, Viewport } from 'next';
 import './globals.css';
 import 'leaflet/dist/leaflet.css';
-import OfflineBanner from '@/app/components/OfflineBanner';
-import { AuthProvider } from '@/lib/contexts/AuthContext';
+import OfflineBanner from '@/presentation/components/OfflineBanner';
+import { AuthProvider } from '@/presentation/contexts/AuthContext';
 
 export const metadata: Metadata = {
   title: 'Deteclima — Monitor Climático Inteligente',

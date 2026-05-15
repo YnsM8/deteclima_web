@@ -1,8 +1,9 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { useAuth } from '@/lib/contexts/AuthContext';
-import { supabase } from '@/lib/supabase/client';
+import { useAuth } from '@/presentation/contexts/AuthContext';
+import { supabase } from '@/infrastructure/adapters/out/persistence/supabase/client';
+
 
 export function useRegionalAlerts() {
   const { user } = useAuth();

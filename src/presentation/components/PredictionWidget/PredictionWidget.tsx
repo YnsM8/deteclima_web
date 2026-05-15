@@ -1,11 +1,11 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useOnlineStatus } from '@/lib/hooks/useOnlineStatus';
+import { useOnlineStatus } from '@/presentation/hooks/useOnlineStatus';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { BarChart3, AlertCircle } from 'lucide-react';
 import type { Prediccion } from '@/domain/entities';
-import { cachePredictionData, getCachedPrediction } from '@/lib/offline/prediction-cache';
+import { cachePredictionData, getCachedPrediction } from '@/infrastructure/adapters/out/cache/prediction-cache';
 
 interface Props {
   lat: number;

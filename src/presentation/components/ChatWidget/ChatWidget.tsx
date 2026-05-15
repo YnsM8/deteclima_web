@@ -1,11 +1,12 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
-import { useOnlineStatus } from '@/lib/hooks/useOnlineStatus';
+import { useOnlineStatus } from '@/presentation/hooks/useOnlineStatus';
 import { MessageCircle, Send, Loader2, Sparkles, AlertTriangle, WifiOff } from 'lucide-react';
 import type { ChatMessage, Clima } from '@/domain/entities';
-import { getOfflineResponse } from '@/infrastructure/adapters/out/LocalChatbotAdapter';
-import { getChatHistory, saveChatHistory } from '@/lib/offline/chat-cache';
+import { getOfflineResponse } from '@/infrastructure/adapters/out/ai/LocalChatbotAdapter';
+import { getChatHistory, saveChatHistory } from '@/infrastructure/adapters/out/cache/chat-cache';
+
 
 interface Props {
   weatherContext: Clima | null;
