@@ -39,3 +39,17 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# agents and internal tools
+.agents/
+.gemini/
+.vscode/
+
+# python
+ml-service/venv/
+ml-service/__pycache__/
+ml-service/*.pyc
+
+# environment
+.env*
+!.env.example
