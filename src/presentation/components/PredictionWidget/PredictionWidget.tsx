@@ -6,6 +6,7 @@ import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContai
 import { BarChart3, AlertCircle } from 'lucide-react';
 import type { Prediccion } from '@/domain/entities';
 import { cachePredictionData, getCachedPrediction } from '@/infrastructure/adapters/out/cache/prediction-cache';
+import { generateSinusoidalFallback } from '@/presentation/utils/sinusoidalFallback';
 
 interface Props {
   lat: number;
@@ -48,10 +49,19 @@ export function PredictionWidget({ lat, lon, onPredictionLoad }: Props) {
             setData(cached);
             if (onPredictionLoad) onPredictionLoad(cached);
           } else if (!ignore) {
-            setError(err instanceof Error && err.message !== 'Offline' ? err.message : 'Modo offline y sin predicciones previas guardadas.');
+            // Activate the sinusoidal fallback because there is no cache and network is offline
+            console.warn('Network offline and no cache. Activating sinusoidal fallback.');
+            const fallbackData = generateSinusoidalFallback(lat, lon);
+            setData(fallbackData);
+            if (onPredictionLoad) onPredictionLoad(fallbackData);
           }
         } catch {
-          if (!ignore) setError('Error de lectura local.');
+          if (!ignore) {
+            console.warn('Error reading local cache. Activating sinusoidal fallback.');
+            const fallbackData = generateSinusoidalFallback(lat, lon);
+            setData(fallbackData);
+            if (onPredictionLoad) onPredictionLoad(fallbackData);
+          }
         }
       } finally {
         if (!ignore) setLoading(false);

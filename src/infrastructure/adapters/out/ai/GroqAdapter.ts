@@ -1,6 +1,6 @@
 import { ChatMessage, RespuestaIA } from '@/domain/entities';
 import { AIPort } from '@/application/ports/output/AIPort';
-import { groq } from '@/infrastructure/adapters/out/ai/groq/client';
+import { groq } from '@/infrastructure/groq/groqClient';
 
 export class GroqAdapter implements AIPort {
   async generateResponse(messages: ChatMessage[], systemPrompt: string): Promise<RespuestaIA> {

@@ -1,8 +1,10 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 import numpy as np
 import requests
+import os
+import pickle
 from datetime import datetime, timedelta
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.model_selection import train_test_split
@@ -21,11 +23,31 @@ app.add_middleware(
 model = None
 model_metrics = {"r2": 0, "mae": 0, "rmse": 0}
 model_version = "1.0.0"
+MODEL_PATH = os.path.join(os.path.dirname(__file__), "model", "model.pkl")
+
+
+def load_saved_model():
+    """Load model and metrics from .pkl file if it exists."""
+    global model, model_metrics
+    if os.path.exists(MODEL_PATH):
+        try:
+            with open(MODEL_PATH, "rb") as f:
+                saved_data = pickle.load(f)
+                model = saved_data["model"]
+                model_metrics = saved_data["metrics"]
+            print(f"Successfully loaded model from {MODEL_PATH}")
+        except Exception as e:
+            print(f"Error loading model from {MODEL_PATH}: {e}")
+
+
+@app.on_event("startup")
+def startup_event():
+    load_saved_model()
 
 
 class PredictRequest(BaseModel):
-    latitude: float
-    longitude: float
+    latitude: float = Field(..., ge=-90.0, le=90.0, description="Latitude between -90 and 90")
+    longitude: float = Field(..., ge=-180.0, le=180.0, description="Longitude between -180 and 180")
 
 
 class PredictionItem(BaseModel):
@@ -91,71 +113,88 @@ def train_model(lat: float, lon: float):
     """Train a Random Forest model with historical data."""
     global model, model_metrics
 
-    data = fetch_historical_data(lat, lon)
-    X, y = prepare_features(data)
+    try:
+        data = fetch_historical_data(lat, lon)
+        X, y = prepare_features(data)
 
-    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+        X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
 
-    rf = RandomForestRegressor(n_estimators=100, max_depth=12, random_state=42, n_jobs=-1)
-    rf.fit(X_train, y_train)
+        rf = RandomForestRegressor(n_estimators=100, max_depth=12, random_state=42, n_jobs=-1)
+        rf.fit(X_train, y_train)
 
-    y_pred = rf.predict(X_test)
-    model_metrics = {
-        "r2": round(r2_score(y_test, y_pred), 4),
-        "mae": round(mean_absolute_error(y_test, y_pred), 4),
-        "rmse": round(float(np.sqrt(mean_squared_error(y_test, y_pred))), 4),
-    }
+        y_pred = rf.predict(X_test)
+        model_metrics = {
+            "r2": round(r2_score(y_test, y_pred), 4),
+            "mae": round(mean_absolute_error(y_test, y_pred), 4),
+            "rmse": round(float(np.sqrt(mean_squared_error(y_test, y_pred))), 4),
+        }
 
-    model = rf
-    return rf
+        model = rf
+
+        # Save model and metrics to .pkl
+        try:
+            os.makedirs(os.path.dirname(MODEL_PATH), exist_ok=True)
+            with open(MODEL_PATH, "wb") as f:
+                pickle.dump({"model": rf, "metrics": model_metrics}, f)
+            print(f"Successfully saved model and metrics to {MODEL_PATH}")
+        except Exception as e:
+            print(f"Error saving model to {MODEL_PATH}: {e}")
+
+        return rf
+    except Exception as e:
+        raise RuntimeError(f"Error training model: {str(e)}")
 
 
 @app.post("/predict", response_model=PredictResponse)
 async def predict(req: PredictRequest):
     global model
 
-    if model is None:
-        train_model(req.latitude, req.longitude)
+    try:
+        if model is None:
+            train_model(req.latitude, req.longitude)
 
-    # Get current conditions for prediction
-    url = "https://api.open-meteo.com/v1/forecast"
-    params = {
-        "latitude": req.latitude,
-        "longitude": req.longitude,
-        "current": "temperature_2m,relative_humidity_2m,wind_speed_10m,surface_pressure,shortwave_radiation",
-        "timezone": "auto",
-    }
-    response = requests.get(url, params=params, timeout=10)
-    current = response.json()["current"]
+        # Get current conditions for prediction
+        url = "https://api.open-meteo.com/v1/forecast"
+        params = {
+            "latitude": req.latitude,
+            "longitude": req.longitude,
+            "current": "temperature_2m,relative_humidity_2m,wind_speed_10m,surface_pressure,shortwave_radiation",
+            "timezone": "auto",
+        }
+        response = requests.get(url, params=params, timeout=10)
+        response.raise_for_status()
+        current = response.json()["current"]
 
-    predictions = []
-    now = datetime.now()
+        predictions = []
+        now = datetime.now()
 
-    for hour_offset in range(24):
-        future_dt = now + timedelta(hours=hour_offset + 1)
-        features = np.array([[
-            current["temperature_2m"],
-            current["relative_humidity_2m"],
-            current["wind_speed_10m"],
-            current["surface_pressure"],
-            current["shortwave_radiation"],
-            future_dt.hour,
-            future_dt.weekday(),
-            future_dt.month,
-        ]])
+        for hour_offset in range(24):
+            future_dt = now + timedelta(hours=hour_offset + 1)
+            features = np.array([[
+                current["temperature_2m"],
+                current["relative_humidity_2m"],
+                current["wind_speed_10m"],
+                current["surface_pressure"],
+                current["shortwave_radiation"],
+                future_dt.hour,
+                future_dt.weekday(),
+                future_dt.month,
+            ]])
 
-        pred_temp = model.predict(features)[0]
-        predictions.append(PredictionItem(
-            time=future_dt.strftime("%Y-%m-%dT%H:00"),
-            temperature=round(float(pred_temp), 1),
-            confidence=round(model_metrics["r2"] * 100, 1),
-        ))
+            pred_temp = model.predict(features)[0]
+            predictions.append(PredictionItem(
+                time=future_dt.strftime("%Y-%m-%dT%H:00"),
+                temperature=round(float(pred_temp), 1),
+                confidence=round(model_metrics["r2"] * 100, 1),
+            ))
 
-    return PredictResponse(
-        predictions=predictions,
-        metrics=model_metrics,
-        model_version=model_version,
-    )
+        return PredictResponse(
+            predictions=predictions,
+            metrics=model_metrics,
+            model_version=model_version,
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error in prediction: {str(e)}")
 
 
 @app.get("/metrics")

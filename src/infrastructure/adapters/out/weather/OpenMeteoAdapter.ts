@@ -22,44 +22,63 @@ export class OpenMeteoAdapter implements WeatherPort {
       timezone: 'auto',
     });
 
-    const response = await fetch(`${BASE_URL}?${params}`);
-    if (!response.ok) {
-      throw new Error(`Open-Meteo API error: ${response.status}`);
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 seconds timeout
+
+    try {
+      const response = await fetch(`${BASE_URL}?${params}`, {
+        signal: controller.signal,
+      });
+      clearTimeout(timeoutId);
+
+      if (response.status === 429) {
+        throw new Error('Open-Meteo API rate limit exceeded. Please try again later.');
+      }
+
+      if (!response.ok) {
+        throw new Error(`Open-Meteo API error: ${response.status}`);
+      }
+
+      const data = await response.json();
+
+      const current: WeatherCurrent = {
+        temperature: data.current.temperature_2m,
+        humidity: data.current.relative_humidity_2m,
+        windSpeed: data.current.wind_speed_10m,
+        windDirection: data.current.wind_direction_10m,
+        pressure: data.current.surface_pressure,
+        precipitation: data.current.precipitation,
+        cloudCover: data.current.cloud_cover,
+        weatherCode: data.current.weather_code,
+        apparentTemperature: data.current.apparent_temperature,
+        radiation: data.current.shortwave_radiation,
+      };
+
+      const hourly: WeatherHourly = {
+        time: data.hourly.time,
+        temperature: data.hourly.temperature_2m,
+        humidity: data.hourly.relative_humidity_2m,
+        precipitation: data.hourly.precipitation,
+        windSpeed: data.hourly.wind_speed_10m,
+        pressure: data.hourly.surface_pressure,
+        weatherCode: data.hourly.weather_code,
+      };
+
+      return {
+        latitude: data.latitude,
+        longitude: data.longitude,
+        locationName: `${lat.toFixed(2)}, ${lon.toFixed(2)}`,
+        current,
+        hourly,
+        timezone: data.timezone,
+        updatedAt: new Date().toISOString(),
+      };
+    } catch (error) {
+      clearTimeout(timeoutId);
+      if (error instanceof Error && error.name === 'AbortError') {
+        throw new Error('Open-Meteo API request timed out after 10 seconds');
+      }
+      throw error;
     }
-
-    const data = await response.json();
-
-    const current: WeatherCurrent = {
-      temperature: data.current.temperature_2m,
-      humidity: data.current.relative_humidity_2m,
-      windSpeed: data.current.wind_speed_10m,
-      windDirection: data.current.wind_direction_10m,
-      pressure: data.current.surface_pressure,
-      precipitation: data.current.precipitation,
-      cloudCover: data.current.cloud_cover,
-      weatherCode: data.current.weather_code,
-      apparentTemperature: data.current.apparent_temperature,
-      radiation: data.current.shortwave_radiation,
-    };
-
-    const hourly: WeatherHourly = {
-      time: data.hourly.time,
-      temperature: data.hourly.temperature_2m,
-      humidity: data.hourly.relative_humidity_2m,
-      precipitation: data.hourly.precipitation,
-      windSpeed: data.hourly.wind_speed_10m,
-      pressure: data.hourly.surface_pressure,
-      weatherCode: data.hourly.weather_code,
-    };
-
-    return {
-      latitude: data.latitude,
-      longitude: data.longitude,
-      locationName: `${lat.toFixed(2)}, ${lon.toFixed(2)}`,
-      current,
-      hourly,
-      timezone: data.timezone,
-      updatedAt: new Date().toISOString(),
-    };
   }
 }
