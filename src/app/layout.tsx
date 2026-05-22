@@ -28,7 +28,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="es">
+    <html lang="es" suppressHydrationWarning>
       <body className="antialiased bg-[#0a0f1e] text-white min-h-screen">
         <AuthProvider>
           <OfflineBanner />

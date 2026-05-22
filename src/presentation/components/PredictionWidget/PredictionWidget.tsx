@@ -77,15 +77,30 @@ export function PredictionWidget({ lat, lon, onPredictionLoad }: Props) {
   useEffect(() => {
     let ignore = false;
     async function fetchAnomaly() {
+      if (!isOnline) {
+        if (!ignore) {
+          setAnomaly({ score: 0, type: 'Normal (Modo Offline)' });
+        }
+        return;
+      }
+
       try {
         // Fetch last 7 days history to calculate a simple baseline
         const end = new Date().toISOString().split('T')[0];
         const start = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
         
         const res = await fetch(`https://archive-api.open-meteo.com/v1/archive?latitude=${lat}&longitude=${lon}&start_date=${start}&end_date=${end}&hourly=temperature_2m`);
-        if (!res.ok) return;
+        if (!res.ok) {
+          if (!ignore) setAnomaly({ score: 0, type: 'Normal' });
+          return;
+        }
         
         const history = await res.json();
+        if (!history || !history.hourly || !history.hourly.temperature_2m) {
+          if (!ignore) setAnomaly({ score: 0, type: 'Normal' });
+          return;
+        }
+
         const temps = history.hourly.temperature_2m;
         const avg = temps.reduce((a: number, b: number) => a + b, 0) / temps.length;
         
@@ -103,12 +118,16 @@ export function PredictionWidget({ lat, lon, onPredictionLoad }: Props) {
           }
         }
       } catch (e) {
-        console.error('Error fetching anomaly data:', e);
+        // Silently catch network failures or DNS resolution issues and use a safe baseline
+        console.warn('No se pudo conectar a la API de anomalías históricas (OpenMeteo) debido a problemas de red. Usando estimación local.', e);
+        if (!ignore) {
+          setAnomaly({ score: 0, type: 'Normal' });
+        }
       }
     }
     if (data) fetchAnomaly();
     return () => { ignore = true; };
-  }, [lat, lon, data]);
+  }, [lat, lon, data, isOnline]);
 
   // Format data for Recharts (extract hour properly)
   const chartData = data?.predictions.map((p) => {
