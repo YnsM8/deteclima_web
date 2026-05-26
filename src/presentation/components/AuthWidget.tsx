@@ -82,10 +82,17 @@ export function AuthWidget() {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
       } else {
-        const { error } = await supabase.auth.signUp({ email, password });
+        const { data, error } = await supabase.auth.signUp({ email, password });
         if (error) throw error;
-        // Notify user if email confirmation is enabled on supabase
-        setError("Revisa tu correo para confirmar (si está activado) o inicia sesión.");
+        
+        // Si el correo de confirmación está desactivado en Supabase, se inicia sesión inmediatamente
+        if (data?.session) {
+          setIsOpen(false);
+          return;
+        }
+        
+        // Si requiere confirmación de correo
+        setError("Se ha enviado un correo de confirmación. Por favor, revísalo para activar tu cuenta.");
         setIsLogin(true);
         return;
       }
