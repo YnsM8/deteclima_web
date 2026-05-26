@@ -1,9 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { OpenMeteoAdapter } from '@/infrastructure/adapters/out/weather/OpenMeteoAdapter';
+import { SupabaseAdapter } from '@/infrastructure/adapters/out/persistence/SupabaseAdapter';
 import { ClimateService } from '@/application/services/ClimateService';
 
 const weatherAdapter = new OpenMeteoAdapter();
-const climateService = new ClimateService(weatherAdapter);
+const supabaseAdapter = new SupabaseAdapter();
+const climateService = new ClimateService(weatherAdapter, supabaseAdapter);
 
 export class WeatherHandler {
   static async handleRequest(request: NextRequest) {

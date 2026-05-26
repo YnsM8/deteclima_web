@@ -8,14 +8,15 @@ export class SupabaseAdapter implements DatabasePort {
     locationName: string;
     dataJson: object;
   }): Promise<void> {
-    const { error } = await supabaseAdmin.from('weather_queries').insert({
-      lat: data.lat,
-      lon: data.lon,
-      location_name: data.locationName,
-      data_json: data.dataJson,
+    // Demostración de procedimiento almacenado (Stored Procedure) desde el código GitHub
+    const { error } = await supabaseAdmin.rpc('save_weather_query_sp', {
+      p_lat: data.lat,
+      p_lon: data.lon,
+      p_location_name: data.locationName,
+      p_data_json: data.dataJson,
     });
 
-    if (error) throw new Error(`Supabase error: ${error.message}`);
+    if (error) throw new Error(`Supabase RPC error: ${error.message}`);
   }
 
   async saveChatMessage(data: {
