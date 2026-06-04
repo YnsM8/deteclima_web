@@ -1,10 +1,8 @@
-'use client';
-
 import { useState, useEffect } from 'react';
 import { useOnlineStatus } from '@/presentation/hooks/useOnlineStatus';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
-import { BarChart3, AlertCircle } from 'lucide-react';
-import type { Prediccion } from '@/domain/entities';
+import { BarChart3, AlertCircle, ShieldAlert, Sprout } from 'lucide-react';
+import { type Prediccion, obtenerRecomendacionPorTemperatura } from '@/domain/entities';
 import { cachePredictionData, getCachedPrediction } from '@/infrastructure/adapters/out/cache/prediction-cache';
 import { generateSinusoidalFallback } from '@/presentation/utils/sinusoidalFallback';
 
@@ -41,7 +39,7 @@ export function PredictionWidget({ lat, lon, onPredictionLoad }: Props) {
           if (onPredictionLoad) onPredictionLoad(json);
         }
         await cachePredictionData(cacheKey, json);
-      } catch (err) {
+      } catch {
         // Fallback to cache
         try {
           const cached = (await getCachedPrediction(cacheKey)) as Prediccion | null;
@@ -140,6 +138,13 @@ export function PredictionWidget({ lat, lon, onPredictionLoad }: Props) {
     };
   }) || [];
 
+  // Calculate minimum temperature forecasted
+  const minTemp = data && data.predictions.length > 0 
+    ? Math.min(...data.predictions.map((p) => p.temperature)) 
+    : 20;
+
+  const recomendacion = obtenerRecomendacionPorTemperatura(minTemp);
+
   return (
     <div id="prediction" className="glass rounded-xl p-6 mt-8 scroll-mt-24 w-full relative overflow-hidden">
       {/* Anomaly Badge */}
@@ -225,8 +230,37 @@ export function PredictionWidget({ lat, lon, onPredictionLoad }: Props) {
               <p className="font-semibold opacity-70">Random Forest {data?.modelVersion || '1.0'}</p>
             </div>
           </div>
+
+          {/* Agricultural Crop Protection Recommendations Panel */}
+          <div className={`mt-6 border border-white/10 rounded-xl p-5 ${recomendacion.color.split(' ').slice(1).join(' ')}`}>
+            <div className="flex items-center gap-2.5 mb-3">
+              {recomendacion.nivel === 'alto' || recomendacion.nivel === 'moderado' ? (
+                <ShieldAlert className={`w-5 h-5 ${recomendacion.color.split(' ')[0]}`} />
+              ) : (
+                <Sprout className={`w-5 h-5 ${recomendacion.color.split(' ')[0]}`} />
+              )}
+              <h3 className={`font-bold text-sm ${recomendacion.color.split(' ')[0]}`}>
+                {recomendacion.titulo}
+              </h3>
+            </div>
+            <p className="text-xs text-white/80 mb-4 leading-relaxed">
+              {recomendacion.descripcion}
+            </p>
+            <div className="flex flex-col gap-2">
+              <p className="text-[10px] font-bold tracking-wider text-white/50 uppercase mb-1">
+                Acciones recomendadas para proteger tus cultivos:
+              </p>
+              {recomendacion.acciones.map((accion, idx) => (
+                <div key={idx} className="flex gap-2 text-xs text-white/90 leading-relaxed bg-black/10 rounded-lg p-2.5 border border-white/5">
+                  <span className="text-[var(--color-accent)] font-bold shrink-0">{idx + 1}.</span>
+                  <span>{accion}</span>
+                </div>
+              ))}
+            </div>
+          </div>
         </>
       )}
     </div>
   );
 }
+

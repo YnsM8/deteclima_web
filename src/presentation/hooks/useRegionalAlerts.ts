@@ -36,8 +36,9 @@ export function useRegionalAlerts() {
           break; // Show only one alert at a time
         }
       }
-    } catch (err: any) {
-      console.error('Error checking regional alerts:', err.message || err);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      console.error('Error checking regional alerts:', message);
     }
   }, [user]);
 
