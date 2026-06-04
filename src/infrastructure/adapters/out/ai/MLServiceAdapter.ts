@@ -25,7 +25,7 @@ export class MLServiceAdapter implements PredictionPort {
           generatedAt: new Date().toISOString(),
         };
       }
-    } catch (e) {
+    } catch {
       console.warn('ML Service unreachable, using mock fallback for demo/offline mode.');
     }
 
