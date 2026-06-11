@@ -22,7 +22,7 @@ function getSupabaseAdmin() {
 }
 
 // Exportamos un Proxy para mantener compatibilidad sin cambiar las importaciones en otros archivos
-export const supabaseAdmin = new Proxy({} as unknown as ReturnType<typeof createClient>, {
+export const supabaseAdmin: any = new Proxy({} as unknown as ReturnType<typeof createClient>, {
   get(target, prop) {
     const client = getSupabaseAdmin();
     const value = Reflect.get(client, prop);
