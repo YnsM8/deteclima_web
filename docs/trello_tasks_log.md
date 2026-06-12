@@ -50,6 +50,14 @@ Este documento recopila de manera estructurada todas las tareas realizadas, difi
   - Persistencia local en `localStorage` como fallback del estado global si el usuario recarga la página o entra sin parámetros URL.
 * **Valor para el proyecto**: Excelente consistencia de navegación e interacción.
 
+### 📋 Tarjeta 8: Sincronización de Sesión y Acceso de Login en Cabecera Móvil
+* **Descripción**: Mostrar un botón visible de inicio de sesión ("Ingresar") en la cabecera móvil superior si el usuario no está autenticado, o su avatar/icono de perfil si ya inició sesión.
+* **Detalle técnico**: 
+  - Se modificó `Sidebar.tsx` en el componente de cabecera móvil (`header` de CSS responsivo `lg:hidden`).
+  - Se añadió la lógica condicional basada en `user` para mostrar el enlace directo a `/auth` o el avatar correspondiente antes del menú hamburguesa.
+* **Dificultades encontradas**: En dispositivos móviles la barra lateral izquierda se oculta por defecto en un panel replegable, lo cual causaba que el botón de login al final de la barra no fuera visible a primera vista.
+* **Valor para el proyecto**: Mejora sustancialmente la conversión y accesibilidad del inicio de sesión en móviles sin requerir abrir el cajón de menú.
+
 ---
 
 ## 🟡 Lista: EN PROCESO (In Progress)
@@ -64,10 +72,6 @@ Este documento recopila de manera estructurada todas las tareas realizadas, difi
 ---
 
 ## 🔴 Lista: POR HACER (To Do)
-
-### 📋 Tarjeta 8: Sincronización de Sesión de Usuario en Sidebar y Header
-* **Descripción**: Mejorar la cohesión visual de la sesión activa ocultando o unificando el botón "Iniciar Sesión / Alertas" de la cabecera cuando el sidebar ya muestra el estado del perfil.
-* **Sugerencia de implementación**: Pasar el estado de autenticación a través del contexto o simplemente sincronizar el renderizado para evitar duplicidades de botones de ingreso en pantallas grandes.
 
 ### 📋 Tarjeta 9: Optimización de tiempos de carga iniciales de cartografía (Leaflet)
 * **Descripción**: Reducir el tiempo de bloqueo en dispositivos móviles durante la carga del explorador climáticos.

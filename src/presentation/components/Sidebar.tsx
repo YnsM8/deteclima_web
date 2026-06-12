@@ -156,13 +156,34 @@ export function Sidebar() {
           <CloudSun size={24} className="text-[var(--color-accent)]" />
           <span className="font-bold text-base tracking-tight">Deteclima</span>
         </div>
-        <button 
-          onClick={toggleSidebar}
-          className="p-2 text-gray-400 hover:text-white transition-colors"
-          aria-label="Abrir menú"
-        >
-          {isOpen ? <X size={22} /> : <Menu size={22} />}
-        </button>
+        <div className="flex items-center gap-3">
+          {/* Enlace rápido de login/perfil para móviles */}
+          {loading ? (
+            <div className="w-8 h-8 rounded-full bg-white/5 animate-pulse" />
+          ) : user ? (
+            <Link 
+              href={`/auth?redirect=${pathname}${queryString}`}
+              className="p-2 text-[var(--color-accent)] hover:text-white transition-colors"
+              aria-label="Ver Perfil"
+            >
+              <UserCircle size={20} />
+            </Link>
+          ) : (
+            <Link 
+              href={`/auth?redirect=${pathname}${queryString}`}
+              className="text-xs bg-[var(--color-accent)]/20 text-[var(--color-accent)] px-3 py-1.5 rounded-full font-bold border border-[var(--color-accent)]/30 hover:bg-[var(--color-accent)] hover:text-white transition-all"
+            >
+              Ingresar
+            </Link>
+          )}
+          <button 
+            onClick={toggleSidebar}
+            className="p-2 text-gray-400 hover:text-white transition-colors"
+            aria-label="Abrir menú"
+          >
+            {isOpen ? <X size={22} /> : <Menu size={22} />}
+          </button>
+        </div>
       </header>
 
       {/* Desktop Permanent Sidebar */}
