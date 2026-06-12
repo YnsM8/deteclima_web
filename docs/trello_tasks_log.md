@@ -6,6 +6,12 @@ Este documento recopila de manera estructurada todas las tareas realizadas, difi
 
 ## 🟢 Lista: HECHO (Done)
 
+### 📋 Tarjeta 10: Manejo Robusto del Cierre/Error del Cliente de Supabase (Evitar Infinite Loading)
+* **Descripción**: Evitar que el sitio web completo se quede congelado en un estado de carga indefinido ("esqueletos de carga") cuando hay fallas de red, DNS o cuando la instancia de base de datos de Supabase se encuentra pausada o inactiva.
+* **Detalle técnico**: Se implementó una captura de excepciones `.catch()` en la llamada asíncrona de `supabase.auth.getSession()` dentro del `useEffect` de inicialización del `AuthProvider`.
+* **Dificultades encontradas**: Las promesas rechazadas sin capturar (`Unhandled Promise Rejection`) interrumpían el hilo de ejecución, impidiendo que el estado de carga `loading` cambiara a `false`.
+* **Valor para el proyecto**: Garantiza la resiliencia de la interfaz de usuario ante contingencias del backend o problemas de red del cliente.
+
 ### 📋 Tarjeta 1: Corrección de error crítico de tipado en Supabase Client
 * **Descripción**: Resolver la falla de compilación en el build de producción provocada por tipos incompatibles (`never[]` e inserciones) en `SupabaseAdapter.ts` debido a esquemas de base de datos dinámicos generados al vuelo.
 * **Detalle técnico**: 

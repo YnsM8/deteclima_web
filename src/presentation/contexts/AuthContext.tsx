@@ -25,11 +25,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     // Check active sessions and sets the user
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      setUser(session?.user ?? null);
-      setLoading(false);
-    });
+    supabase.auth.getSession()
+      .then(({ data: { session } }) => {
+        setSession(session);
+        setUser(session?.user ?? null);
+        setLoading(false);
+      })
+      .catch((err) => {
+        console.error('Error al recuperar sesión de Supabase:', err);
+        setLoading(false);
+      });
 
     // Listen for changes on auth state (log in, log out, etc)
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
