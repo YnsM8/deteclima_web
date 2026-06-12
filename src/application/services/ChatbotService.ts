@@ -1,5 +1,5 @@
 import { ChatMessage, RespuestaIA } from '@/domain/entities';
-import { isClimateRelated } from '@/domain/validators/ClimaValidator';
+import { isClimateRelated, sanitizeInput, hasPromptInjectionPattern } from '@/domain/validators/ClimaValidator';
 import { ChatbotUseCase } from '@/application/ports/input/ChatbotUseCase';
 import { AIPort } from '@/application/ports/output/AIPort';
 
@@ -10,8 +10,9 @@ REGLAS ESTRICTAS:
 2. Si la pregunta NO es sobre clima, responde: "Lo siento, solo puedo ayudarte con temas relacionados al clima y la meteorología. ¿Tienes alguna pregunta sobre el tiempo?"
 3. Usa lenguaje didáctico adaptado para estudiantes de educación básica (12-16 años).
 4. Si se proporcionan datos climáticos reales, SIEMPRE cita los valores exactos en tu respuesta.
-5. Incluye ejemplos locales de la región andina peruana cuando sea relevante.
-6. Responde en español.
+5. Genera RECOMENDACIONES PROACTIVAS basadas en los DATOS CLIMÁTICOS ACTUALES proporcionados (por ejemplo, si la temperatura es baja aconseja sobre abrigarse o proteger cultivos frente a heladas, si la radiación es alta sugiere protección solar, etc.). Haz esto de forma natural e integrada en tu respuesta.
+6. Incluye ejemplos locales de la región andina peruana cuando sea relevante.
+7. Responde en español.
 
 DATOS CLIMÁTICOS ACTUALES:
 {WEATHER_CONTEXT}`;
@@ -21,7 +22,32 @@ export class ChatbotService implements ChatbotUseCase {
 
   async execute(messages: ChatMessage[], weatherContext?: string): Promise<RespuestaIA> {
     const lastMessage = messages[messages.length - 1];
-    if (lastMessage && !isClimateRelated(lastMessage.content)) {
+    
+    if (!lastMessage) {
+      return {
+        content: 'No hay mensajes en la conversación.',
+        model: 'filter',
+        tokensUsed: 0,
+        latencyMs: 0,
+        isOffline: false,
+      };
+    }
+
+    // Sanitizar entrada
+    lastMessage.content = sanitizeInput(lastMessage.content);
+
+    // Detectar inyección de prompts
+    if (hasPromptInjectionPattern(lastMessage.content)) {
+      return {
+        content: 'Lo siento, no puedo procesar tu solicitud porque contiene patrones de entrada no autorizados.',
+        model: 'security-filter',
+        tokensUsed: 0,
+        latencyMs: 0,
+        isOffline: false,
+      };
+    }
+
+    if (!isClimateRelated(lastMessage.content)) {
       return {
         content: 'Lo siento, solo puedo ayudarte con temas relacionados al clima y la meteorología. ¿Tienes alguna pregunta sobre el tiempo?',
         model: 'filter',
@@ -39,3 +65,4 @@ export class ChatbotService implements ChatbotUseCase {
     return this.aiPort.generateResponse(messages, prompt);
   }
 }
+

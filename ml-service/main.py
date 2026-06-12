@@ -5,16 +5,39 @@ import numpy as np
 import requests
 import os
 import pickle
+import logging
+import json
 from datetime import datetime, timedelta
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import r2_score, mean_absolute_error, mean_squared_error
 
+# Structured JSON Logger Setup
+class JsonFormatter(logging.Formatter):
+    def format(self, record):
+        log_record = {
+            "timestamp": datetime.now().isoformat(),
+            "level": record.levelname,
+            "message": record.getMessage(),
+            "name": record.name
+        }
+        if record.exc_info:
+            log_record["exc_info"] = self.formatException(record.exc_info)
+        return json.dumps(log_record)
+
+logger = logging.getLogger("deteclima_ml")
+log_handler = logging.StreamHandler()
+log_handler.setFormatter(JsonFormatter())
+logger.addHandler(log_handler)
+logger.setLevel(logging.INFO)
+
 app = FastAPI(title="Deteclima ML Service", version="1.0.0")
 
+# Explicit CORS allowed origins
+ALLOWED_ORIGINS = os.getenv("ALLOWED_ORIGINS", "http://localhost:3000,http://localhost:3001,https://deteclima.vercel.app").split(",")
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=ALLOWED_ORIGINS,
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -35,9 +58,9 @@ def load_saved_model():
                 saved_data = pickle.load(f)
                 model = saved_data["model"]
                 model_metrics = saved_data["metrics"]
-            print(f"Successfully loaded model from {MODEL_PATH}")
+            logger.info(f"Successfully loaded model from {MODEL_PATH}")
         except Exception as e:
-            print(f"Error loading model from {MODEL_PATH}: {e}")
+            logger.error(f"Error loading model from {MODEL_PATH}", exc_info=True)
 
 
 @app.on_event("startup")
@@ -136,12 +159,13 @@ def train_model(lat: float, lon: float):
             os.makedirs(os.path.dirname(MODEL_PATH), exist_ok=True)
             with open(MODEL_PATH, "wb") as f:
                 pickle.dump({"model": rf, "metrics": model_metrics}, f)
-            print(f"Successfully saved model and metrics to {MODEL_PATH}")
+            logger.info(f"Successfully saved model and metrics to {MODEL_PATH}")
         except Exception as e:
-            print(f"Error saving model to {MODEL_PATH}: {e}")
+            logger.error(f"Error saving model to {MODEL_PATH}", exc_info=True)
 
         return rf
     except Exception as e:
+        logger.error(f"Error training model: {str(e)}", exc_info=True)
         raise RuntimeError(f"Error training model: {str(e)}")
 
 
@@ -188,13 +212,27 @@ async def predict(req: PredictRequest):
                 confidence=round(model_metrics["r2"] * 100, 1),
             ))
 
+        logger.info(f"Prediction generated successfully for lat: {req.latitude}, lon: {req.longitude}")
         return PredictResponse(
             predictions=predictions,
             metrics=model_metrics,
             model_version=model_version,
         )
     except Exception as e:
+        logger.error("Error in prediction endpoint", exc_info=True)
         raise HTTPException(status_code=500, detail=f"Error in prediction: {str(e)}")
+
+
+@app.post("/train")
+async def trigger_train(req: PredictRequest):
+    try:
+        logger.info(f"Starting model training for lat: {req.latitude}, lon: {req.longitude}")
+        train_model(req.latitude, req.longitude)
+        logger.info(f"Model trained successfully. New metrics: {model_metrics}")
+        return {"status": "success", "metrics": model_metrics, "model_version": model_version}
+    except Exception as e:
+        logger.error("Error in train endpoint", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @app.get("/metrics")

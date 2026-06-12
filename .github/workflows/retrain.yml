@@ -1,0 +1,38 @@
+name: Weekly Model Retraining
+
+on:
+  schedule:
+    # Runs at 00:00 every Sunday
+    - cron: '0 0 * * 0'
+  workflow_dispatch: # Allow manual trigger
+
+jobs:
+  retrain:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+
+      - name: Install Dependencies
+        run: |
+          cd ml-service
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Run Retraining Script
+        run: |
+          cd ml-service
+          python -c "from main import train_model; train_model(-11.775, -75.497)"
+
+      - name: Commit and Push updated model
+        run: |
+          git config --global user.name "Deteclima Bot"
+          git config --global user.email "bot@deteclima.edu.pe"
+          git add ml-service/model/model.pkl
+          git diff-index --quiet HEAD || git commit -m "chore: auto-update trained ML model [skip ci]"
+          git push

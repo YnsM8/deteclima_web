@@ -57,4 +57,17 @@ export class MLServiceAdapter implements PredictionPort {
       generatedAt: new Date().toISOString(),
     };
   }
+
+  async warmup(): Promise<boolean> {
+    try {
+      const response = await fetch(`${ML_SERVICE_URL}/health`, {
+        method: 'GET',
+        signal: AbortSignal.timeout(3000)
+      });
+      return response.ok;
+    } catch {
+      return false;
+    }
+  }
 }
+

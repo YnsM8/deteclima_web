@@ -28,8 +28,13 @@ export class OpenMeteoAdapter implements WeatherPort {
     try {
       const response = await fetch(`${BASE_URL}?${params}`, {
         signal: controller.signal,
+        redirect: 'manual', // Prevent SSRF redirect-following
       });
       clearTimeout(timeoutId);
+
+      if (response.status >= 300 && response.status < 400) {
+        throw new Error('SSRF Warning: Redirects are disabled for security reasons.');
+      }
 
       if (response.status === 429) {
         throw new Error('Open-Meteo API rate limit exceeded. Please try again later.');

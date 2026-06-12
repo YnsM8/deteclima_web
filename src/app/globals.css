@@ -19,7 +19,18 @@ body {
   background: radial-gradient(circle at top left, #0f172a, #0a0f1e, #020617);
   color: var(--color-text-primary);
   min-height: 100vh;
+  font-size: 16px; /* Base font size 16px for accessibility */
 }
+
+/* Accessibility contrast button helper (WCAG AA Compliant) */
+.btn-accent {
+  background-color: var(--color-accent) !important;
+  color: #0a0f1e !important; /* Dark text on sky blue background */
+}
+.btn-accent:hover {
+  background-color: #0ea5e9 !important; /* Darker blue on hover */
+}
+
 
 /* Scrollbar styling */
 ::-webkit-scrollbar {
@@ -82,3 +93,38 @@ body {
   scrollbar-width: thin;
   scrollbar-color: rgba(255, 255, 255, 0.1) transparent;
 }
+
+/* Print styles for M-09 PDF generation */
+@media print {
+  body {
+    background: white !important;
+    color: black !important;
+    font-size: 11pt !important;
+  }
+  /* Hide interactive, map controls, chat widget, onboarding modal, and non-printable elements */
+  .no-print,
+  button,
+  a,
+  .leaflet-control-container,
+  #chat-widget-container,
+  .onboarding-modal,
+  .map-actions {
+    display: none !important;
+  }
+  .glass {
+    background: white !important;
+    color: black !important;
+    border: 1px solid #ddd !important;
+    box-shadow: none !important;
+    transform: none !important;
+  }
+  .grid {
+    display: grid !important;
+  }
+  /* Ensure header text is readable */
+  h1, h2, h3, h4, p, span, div {
+    color: black !important;
+    text-shadow: none !important;
+  }
+}
+

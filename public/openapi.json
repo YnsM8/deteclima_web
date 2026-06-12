@@ -1,0 +1,188 @@
+{
+  "openapi": "3.0.0",
+  "info": {
+    "title": "Deteclima Next.js API",
+    "description": "Especificación de la API de Deteclima para consulta del clima, predicciones meteorológicas e interacción con el chatbot de IA.",
+    "version": "1.0.0"
+  },
+  "servers": [
+    {
+      "url": "http://localhost:3000",
+      "description": "Servidor de desarrollo local"
+    }
+  ],
+  "paths": {
+    "/api/weather": {
+      "get": {
+        "summary": "Obtener datos climáticos actuales",
+        "description": "Retorna datos en tiempo real de Open-Meteo para las coordenadas especificadas.",
+        "parameters": [
+          {
+            "name": "lat",
+            "in": "query",
+            "required": true,
+            "description": "Latitud de la ubicación",
+            "schema": {
+              "type": "number",
+              "minimum": -90,
+              "maximum": 90
+            }
+          },
+          {
+            "name": "lon",
+            "in": "query",
+            "required": true,
+            "description": "Longitud de la ubicación",
+            "schema": {
+              "type": "number",
+              "minimum": -180,
+              "maximum": 180
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Datos climáticos actuales y pronóstico por horas",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Parámetros inválidos o faltantes"
+          },
+          "500": {
+            "description": "Error interno del servidor"
+          }
+        }
+      }
+    },
+    "/api/prediction": {
+      "post": {
+        "summary": "Obtener predicción de temperaturas con ML",
+        "description": "Genera una predicción de temperatura para las próximas 24 horas usando el modelo de Random Forest del microservicio.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "latitude": {
+                    "type": "number"
+                  },
+                  "longitude": {
+                    "type": "number"
+                  }
+                },
+                "required": ["latitude", "longitude"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Predicciones horarias de temperatura y métricas de precisión",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Parámetros inválidos o faltantes"
+          },
+          "500": {
+            "description": "Error interno del servidor"
+          }
+        }
+      },
+      "get": {
+        "summary": "Pre-calentar el microservicio de ML",
+        "description": "Realiza un ping interno al microservicio FastAPI para inicializar y cargar el modelo en memoria, previniendo cold starts.",
+        "responses": {
+          "200": {
+            "description": "Servicio calentado con éxito",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string"
+                    },
+                    "warm": {
+                      "type": "boolean"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/chat": {
+      "post": {
+        "summary": "Interacción didáctica con el Asistente AI",
+        "description": "Envía mensajes al chatbot Deteclima AI para responder dudas sobre meteorología con datos del clima actual como contexto.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "messages": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "role": {
+                          "type": "string",
+                          "enum": ["user", "assistant", "system"]
+                        },
+                        "content": {
+                          "type": "string"
+                        }
+                      },
+                      "required": ["role", "content"]
+                    }
+                  },
+                  "weatherContext": {
+                    "type": "string",
+                    "description": "Resumen del clima actual como contexto para la IA"
+                  }
+                },
+                "required": ["messages"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Respuesta didáctica generada por la IA",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Solicitud inválida"
+          },
+          "500": {
+            "description": "Error interno del servidor"
+          }
+        }
+      }
+    }
+  }
+}

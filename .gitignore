@@ -53,3 +53,6 @@ ml-service/*.pyc
 # environment
 .env*
 !.env.example
+
+# local tools
+.superpowers/
