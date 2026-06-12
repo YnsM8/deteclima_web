@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, Suspense } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useOnlineStatus } from "@/presentation/hooks/useOnlineStatus";
 import {
   CloudSun,
@@ -15,29 +16,75 @@ import {
   cacheWeatherData,
   getCachedWeather,
 } from "@/infrastructure/adapters/out/cache/weather-cache";
-import { ChatWidget } from "@/presentation/components/ChatWidget/ChatWidget";
-import { PredictionWidget } from "@/presentation/components/PredictionWidget/PredictionWidget";
 import { MapWidget } from "@/presentation/components/MapWidget/MapWidget";
 import { AuthWidget } from "@/presentation/components/AuthWidget";
 import { AlertBanner } from "@/presentation/components/AlertBanner";
 import { useRegionalAlerts } from "@/presentation/hooks/useRegionalAlerts";
-import type { Prediccion } from "@/domain/entities";
 
-
-export default function Home() {
+function HomeContent() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const isOnline = useOnlineStatus();
+  
   const [clima, setClima] = useState<Clima | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isOfflineData, setIsOfflineData] = useState(false);
-  const [coordinates, setCoordinates] = useState({
-    lat: -11.775,
-    lon: -75.497,
-  });
   const [alertMessage, setAlertMessage] = useState<string | null>(null);
 
+  // Initialize coordinates from URL -> localStorage -> default Jauja
+  const [coordinates, setCoordinatesState] = useState(() => {
+    const defaultCoords = { lat: -11.775, lon: -75.497 };
+    
+    // Read from search params if present
+    const urlLat = searchParams.get("lat");
+    const urlLon = searchParams.get("lon");
+    if (urlLat && urlLon) {
+      const parsedLat = parseFloat(urlLat);
+      const parsedLon = parseFloat(urlLon);
+      if (!isNaN(parsedLat) && !isNaN(parsedLon)) {
+        return { lat: parsedLat, lon: parsedLon };
+      }
+    }
+
+    // Fallback to localStorage
+    if (typeof window !== "undefined") {
+      try {
+        const saved = localStorage.getItem("deteclima_last_coords");
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          if (parsed && typeof parsed.lat === "number" && typeof parsed.lon === "number") {
+            return parsed;
+          }
+        }
+      } catch (e) {
+        console.error("Error reading coordinates from localStorage:", e);
+      }
+    }
+
+    return defaultCoords;
+  });
+
+  // Keep search params in sync with coordinates state
+  const setCoordinates = useCallback((lat: number, lon: number) => {
+    setCoordinatesState({ lat, lon });
+    
+    // Save to localStorage
+    try {
+      localStorage.setItem("deteclima_last_coords", JSON.stringify({ lat, lon }));
+    } catch (e) {
+      console.error("Error writing coordinates to localStorage:", e);
+    }
+
+    // Update URL query parameters
+    const params = new URLSearchParams(searchParams.toString());
+    params.set("lat", lat.toFixed(4));
+    params.set("lon", lon.toFixed(4));
+    router.push(`/?${params.toString()}`);
+  }, [router, searchParams]);
+
   useEffect(() => {
-    console.log('Fetching weather for:', coordinates.lat, coordinates.lon);
+    console.log("Fetching weather for:", coordinates.lat, coordinates.lon);
     let ignore = false;
 
     async function fetchWeather() {
@@ -95,16 +142,6 @@ export default function Home() {
     };
   }, [isOnline, coordinates]);
 
-  const handlePredictionLoad = useCallback((pred: Prediccion) => {
-    // Buscar si alguna temperatura de las próximas 24h cae a <= 5°C (Helada/Friaje severo)
-    const coldHours = pred.predictions.filter((p) => p.temperature <= 5);
-    if (coldHours.length > 0) {
-      setAlertMessage(
-        `¡Atención! Se pronostica un evento de helada/friaje con temperaturas de hasta ${Math.min(...coldHours.map((c) => c.temperature))}°C en las próximas horas.`,
-      );
-    }
-  }, []);
-
   const exportCSV = useCallback(() => {
     if (!clima) return;
 
@@ -134,8 +171,11 @@ export default function Home() {
 
   const { alert: regionalAlert, clearAlert: clearRegionalAlert } = useRegionalAlerts();
 
+  // Create query string to propagate lat/lon to other pages
+  const queryStr = `?lat=${coordinates.lat.toFixed(4)}&lon=${coordinates.lon.toFixed(4)}`;
+
   return (
-    <main className="min-h-screen p-6 max-w-6xl mx-auto relative">
+    <div className="max-w-6xl mx-auto relative">
       <AlertBanner
         message={alertMessage || regionalAlert}
         onClose={() => {
@@ -143,24 +183,26 @@ export default function Home() {
           clearRegionalAlert();
         }}
       />
+      
       {/* Header */}
       <header className="flex flex-col md:flex-row items-start md:items-center justify-between mb-8 gap-4">
         <div className="flex items-center gap-3">
           <CloudSun size={36} className="text-[var(--color-accent)]" />
-          <h1 className="text-2xl font-bold tracking-tight">Deteclima</h1>
+          <div>
+            <h1 className="text-2xl font-bold tracking-tight">Explorador Climático</h1>
+            <p className="text-xs text-[var(--color-text-secondary)]">Monitoreo meteorológico en tiempo real y alertas de heladas.</p>
+          </div>
         </div>
         <div className="flex items-center gap-6">
           <AuthWidget />
           <div className="flex items-center gap-2 text-sm text-[var(--color-text-secondary)]">
             {isOnline ? (
               <>
-                <Wifi size={16} className="text-[var(--color-success)]" /> En
-                línea
+                <Wifi size={16} className="text-[var(--color-success)]" /> En línea
               </>
             ) : (
               <>
-                <WifiOff size={16} className="text-[var(--color-warning)]" />{" "}
-                Offline
+                <WifiOff size={16} className="text-[var(--color-warning)]" /> Offline
               </>
             )}
           </div>
@@ -192,7 +234,7 @@ export default function Home() {
           <MapWidget
             lat={coordinates.lat}
             lon={coordinates.lon}
-            setCoordinates={(lat, lon) => setCoordinates({ lat, lon })}
+            setCoordinates={setCoordinates}
           />
           {loading && (
             <div className="absolute inset-0 z-10 bg-black/20 backdrop-blur-[1px] rounded-xl flex items-center justify-center pointer-events-none">
@@ -267,28 +309,20 @@ export default function Home() {
               >
                 <Download size={18} className="group-hover:bounce" /> Exportar Reporte CSV
               </button>
+              
               <a
-                href="#chat"
-                className="glass rounded-xl px-5 py-3 text-sm font-bold flex items-center gap-2 hover:bg-white/10 transition-all"
+                href={`/chat${queryStr}`}
+                className="glass rounded-xl px-5 py-3 text-sm font-bold flex items-center gap-2 hover:bg-white/10 transition-all text-[var(--color-accent)]"
               >
                 <MessageCircle size={18} /> Consultar a la IA
               </a>
+              
               <a
-                href="#prediction"
-                className="glass rounded-xl px-5 py-3 text-sm font-bold flex items-center gap-2 hover:bg-white/10 transition-all"
+                href={`/prediction${queryStr}`}
+                className="glass rounded-xl px-5 py-3 text-sm font-bold flex items-center gap-2 hover:bg-white/10 transition-all text-[var(--color-accent)]"
               >
                 <BarChart3 size={18} /> Ver Análisis ML
               </a>
-            </div>
-
-            {/* AI Modules */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-8 items-start">
-              <ChatWidget weatherContext={clima} />
-              <PredictionWidget
-                lat={coordinates.lat}
-                lon={coordinates.lon}
-                onPredictionLoad={handlePredictionLoad}
-              />
             </div>
           </div>
         )}
@@ -305,6 +339,18 @@ export default function Home() {
         Deteclima — Colegio San Vicente de Paúl, Jauja |{" "}
         {new Date().getFullYear()}
       </footer>
-    </main>
+    </div>
+  );
+}
+
+export default function Home() {
+  return (
+    <Suspense fallback={
+      <div className="flex items-center justify-center min-h-[500px]">
+        <div className="animate-spin rounded-full h-8 w-8 border-2 border-[var(--color-accent)] border-t-transparent" />
+      </div>
+    }>
+      <HomeContent />
+    </Suspense>
   );
 }
