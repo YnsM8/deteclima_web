@@ -30,7 +30,7 @@ export function Sidebar() {
   const menuItems = [
     {
       name: 'Explorador Climático',
-      href: '/',
+      href: '/explorer',
       icon: CloudSun,
       restricted: false,
     },

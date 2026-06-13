@@ -18,7 +18,7 @@ function AuthContent() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const redirectUrl = searchParams.get('redirect') || '/';
+  const redirectUrl = searchParams.get('redirect') || '/explorer';
 
   // Redirect if user is already logged in
   useEffect(() => {
@@ -73,7 +73,7 @@ function AuthContent() {
 
       {/* Back to Home Button */}
       <Link 
-        href="/"
+        href="/explorer"
         className="absolute top-6 left-6 flex items-center gap-2 text-xs text-[var(--color-text-secondary)] hover:text-white transition-colors glass px-4 py-2 rounded-full border border-white/5"
       >
         <ArrowLeft size={14} /> Volver al Explorador

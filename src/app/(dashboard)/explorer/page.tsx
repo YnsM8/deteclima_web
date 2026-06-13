@@ -27,7 +27,7 @@ import { AlertBanner } from "@/presentation/components/AlertBanner";
 import { useRegionalAlerts } from "@/presentation/hooks/useRegionalAlerts";
 
 
-function HomeContent() {
+function ExplorerContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const isOnline = useOnlineStatus();
@@ -141,7 +141,7 @@ function HomeContent() {
     const params = new URLSearchParams(searchParams.toString());
     params.set("lat", lat.toFixed(4));
     params.set("lon", lon.toFixed(4));
-    router.push(`/?${params.toString()}`);
+    router.push(`/explorer?${params.toString()}`);
   }, [router, searchParams]);
 
   useEffect(() => {
@@ -565,14 +565,14 @@ function HomeContent() {
   );
 }
 
-export default function Home() {
+export default function ExplorerPage() {
   return (
     <Suspense fallback={
       <div className="flex items-center justify-center min-h-[500px]">
         <div className="animate-spin rounded-full h-8 w-8 border-2 border-[var(--color-accent)] border-t-transparent" />
       </div>
     }>
-      <HomeContent />
+      <ExplorerContent />
     </Suspense>
   );
 }
