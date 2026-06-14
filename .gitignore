@@ -56,3 +56,5 @@ ml-service/*.pyc
 
 # local tools
 .superpowers/
+
+.vercel
