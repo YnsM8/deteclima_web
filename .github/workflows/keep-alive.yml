@@ -1,0 +1,17 @@
+name: Keep Supabase Alive
+
+on:
+  schedule:
+    # Runs at 00:00 UTC every Tuesday and Friday (twice a week)
+    - cron: '0 0 * * 2,5'
+  workflow_dispatch: # Allow manual trigger
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping Supabase Database
+        run: |
+          curl -i -X GET "https://wlsrmsasinmanjzvqvyw.supabase.co/rest/v1/weather_queries?limit=1" \
+            -H "apikey: ${{ secrets.SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Indsc3Jtc2FzaW5tYW5qenZxdnl3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzcyNDEzNzgsImV4cCI6MjA5MjgxNzM3OH0.2IYUxpdLWBrw1CnDDoqWQGIXVH_X9Le1XzjNzYvNmCY' }}" \
+            -H "Authorization: Bearer ${{ secrets.SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Indsc3Jtc2FzaW5tYW5qenZxdnl3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzcyNDEzNzgsImV4cCI6MjA5MjgxNzM3OH0.2IYUxpdLWBrw1CnDDoqWQGIXVH_X9Le1XzjNzYvNmCY' }}"
